@@ -125,11 +125,11 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl border border-bline flex flex-col shadow-2xl max-h-[92vh] overflow-hidden"
+        className="bg-surface w-full max-w-md mx-auto rounded-3xl border border-bline flex flex-col shadow-2xl max-h-[90vh] sm:max-h-[88vh] overflow-hidden"
       >
         <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-bline">
           <h2 className="text-main text-lg font-bold">
@@ -149,7 +149,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           </div>
         )}
 
-        <form onSubmit={handleSave} className="modal-scroll flex-1 px-5 sm:px-6 py-4 space-y-4">
+        <form onSubmit={handleSave} className="modal-scroll flex-1 px-5 sm:px-6 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4">
           <div>
             <label className="text-muted text-xs font-medium block mb-1.5">
               Wallet / Account Name

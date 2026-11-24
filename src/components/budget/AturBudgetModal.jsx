@@ -81,11 +81,11 @@ export default function AturBudgetModal({ isOpen, onClose, month, existingBudget
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-bline flex flex-col shadow-2xl max-h-[92vh] overflow-hidden"
+        className="bg-surface w-full max-w-lg mx-auto rounded-3xl border border-bline flex flex-col shadow-2xl max-h-[90vh] sm:max-h-[88vh] overflow-hidden"
       >
         <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-bline">
           <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export default function AturBudgetModal({ isOpen, onClose, month, existingBudget
           })}
         </div>
 
-        <div className="px-5 sm:px-6 pb-5 pt-3 border-t border-bline">
+        <div className="px-5 sm:px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 border-t border-bline">
           <button
             onClick={handleSubmit}
             disabled={saving}

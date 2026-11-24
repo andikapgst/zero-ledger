@@ -25,12 +25,12 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom">
       <div className="bg-surface/95 border-t border-bline backdrop-blur-md transition-colors">
-        <div className="flex items-end justify-around px-1 pt-2 pb-1 max-w-lg mx-auto relative">
+        <div className="w-full max-w-lg mx-auto grid grid-cols-5 items-center relative px-1 pt-1.5 pb-1">
           {NAV_ITEMS.map((item, idx) => {
             if (!item) {
-              // Centre Rotating FAB Button
+              // Centre Rotating FAB Button (Exact 50% Center, Column 3)
               return (
-                <div key="fab" className="flex flex-col items-center -mt-5 pb-1">
+                <div key="fab" className="flex flex-col items-center justify-center -mt-6">
                   <button
                     onClick={toggleQuickMenu}
                     aria-label="Add Transaction"
@@ -58,18 +58,18 @@ export default function BottomNav() {
                 to={to}
                 end={to === '/'}
                 className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors duration-150
+                  `flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-xl transition-colors duration-150 w-full
                   ${isActive ? 'text-teal' : 'text-muted hover:text-main'}`
                 }
               >
                 {({ isActive }) => (
                   <>
                     <Icon
-                      size={21}
+                      size={20}
                       className={isActive ? 'text-teal' : 'text-muted'}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
-                    <span className={`text-[10px] font-medium leading-none ${isActive ? 'text-teal' : 'text-muted'}`}>
+                    <span className={`text-[10px] font-medium leading-none truncate max-w-full text-center ${isActive ? 'text-teal' : 'text-muted'}`}>
                       {label}
                     </span>
                   </>

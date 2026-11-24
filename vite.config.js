@@ -82,6 +82,9 @@ export default defineConfig({
 
       // ── Workbox (Service Worker) ─────────────────────────────────────────
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           // Google Fonts

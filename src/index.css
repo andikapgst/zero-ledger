@@ -36,6 +36,12 @@ html.dark {
   color-scheme: dark;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-main);
@@ -102,5 +108,8 @@ html.light .bg-gradient-to-br.from-\[\#121A1E\] {
 .modal-scroll {
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
 }
 
