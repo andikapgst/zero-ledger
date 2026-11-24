@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root Theme Variables */
+:root {
+  --color-bg: #0B1215;
+  --color-surface: #121A1E;
+  --color-card: #121A1E;
+  --color-subcard: rgba(255, 255, 255, 0.04);
+  --color-muted: #94A3B8;
+  --color-main: #F8FAFC;
+  --color-border: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+}
+
+html.light {
+  --color-bg: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-subcard: #F8FAFC;
+  --color-muted: #64748B;
+  --color-main: #0F172A;
+  --color-border: #E2E8F0;
+  color-scheme: light;
+}
+
+html.dark {
+  --color-bg: #0B1215;
+  --color-surface: #121A1E;
+  --color-card: #121A1E;
+  --color-subcard: rgba(255, 255, 255, 0.04);
+  --color-muted: #94A3B8;
+  --color-main: #F8FAFC;
+  --color-border: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-main);
+}
+
+/* Light mode overrides for text color utility classes */
+html.light .text-white,
+html.light [class*="text-white"] {
+  color: #0F172A !important;
+}
+
+html.light .bg-surface {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+html.light .bg-bg {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light .border-white\/5,
+html.light .border-white\/10 {
+  border-color: #E2E8F0 !important;
+}
+
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+html.light .bg-white\/\[0\.03\] {
+  background-color: #F1F5F9 !important;
+}
+
+html.light .bg-gradient-to-br.from-\[\#121A1E\] {
+  background-image: linear-gradient(to bottom right, #FFFFFF, #F8FAFC, #F0FDFA) !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Safe area insets for iPhone notch / Android nav bar */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom thin scrollbar so content is never clipped by vertical scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 212, 191, 0.5);
+}
+
+/* Modal scrollable area with smooth overlay scroll and equal padding */
+.modal-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#0B1215"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" fill="#2DD4BF" opacity="0.15"/>
+  <text x="50" y="68" font-family="Arial, sans-serif" font-size="42" font-weight="900" text-anchor="middle" fill="#2DD4BF">ZL</text>
+</svg>
