@@ -12,24 +12,52 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Langsung set user terlebih dahulu agar UI tidak nge-hang
-        setUser(firebaseUser);
-        setLoading(false);
+    // Safety timer: maximum 3 seconds wait for auth resolution
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
 
-        // upsertUserProfile dijalankan di latar belakang tanpa memblokir sesi login
-        try {
-          await upsertUserProfile(firebaseUser);
-        } catch (err) {
-          console.warn('Gagal sinkron profil user ke Firestore (cek Firestore Rules):', err);
-        }
+    let unsubscribe = () => {};
+    try {
+      if (auth) {
+        unsubscribe = onAuthStateChanged(
+          auth,
+          async (firebaseUser) => {
+            clearTimeout(timeoutId);
+            if (firebaseUser) {
+              setUser(firebaseUser);
+              setLoading(false);
+
+              try {
+                await upsertUserProfile(firebaseUser);
+              } catch (err) {
+                console.warn('Gagal sinkron profil user ke Firestore:', err);
+              }
+            } else {
+              setUser(null);
+              setLoading(false);
+            }
+          },
+          (err) => {
+            console.error('onAuthStateChanged error:', err);
+            clearTimeout(timeoutId);
+            setLoading(false);
+          }
+        );
       } else {
-        setUser(null);
+        clearTimeout(timeoutId);
         setLoading(false);
       }
-    });
-    return unsubscribe;
+    } catch (err) {
+      console.error('Firebase Auth failed to attach listener:', err);
+      clearTimeout(timeoutId);
+      setLoading(false);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const login  = () => signInWithGoogle();

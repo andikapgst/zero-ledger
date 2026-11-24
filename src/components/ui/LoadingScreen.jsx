@@ -6,7 +6,7 @@ export default function LoadingScreen() {
     <div className="fixed inset-0 bg-bg flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-14 h-14 rounded-2xl bg-teal flex items-center justify-center shadow-lg shadow-teal/30">
-          <span className="text-2xl font-bold text-bg">ZL</span>
+          <span className="text-2xl font-black text-[#0B1215]">ZL</span>
         </div>
         <div className="flex gap-1.5">
           {[0, 1, 2].map(i => (
