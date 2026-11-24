@@ -4,6 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Building2, Wallet, Smartphone, TrendingUp, Trash2 } from 'lucide-react';
 import { addWallet, updateWallet, deleteWallet } from '../../lib/firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import WalletLogo from './WalletLogo';
 
 const WALLET_TYPES = [
@@ -25,6 +27,8 @@ const PRESET_COLORS = [
 ];
 
 export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onSuccess }) {
+  const { user } = useAuth();
+  const toast = useToast();
   const isEdit = Boolean(walletToEdit);
 
   const [name, setName]         = useState('');
@@ -68,12 +72,23 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
 
   const handleSave = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    const activeUid = userId || user?.uid;
+    console.log('[WalletModal] handleSave called, activeUid:', activeUid, 'isEdit:', isEdit);
+
+    if (!activeUid) {
+      setError('User not authenticated. Please log in again.');
+      toast.error('Not authenticated. Please log in again.');
+      return;
+    }
+
     if (!name.trim()) {
       setError('Wallet name cannot be empty');
       return;
     }
 
-    const numBalance = balance ? parseInt(balance, 10) : 0;
+    const numBalance = balance ? parseInt(balance.replace(/\./g, ''), 10) : 0;
     setSaving(true);
     setError('');
 
@@ -86,20 +101,24 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           color,
           isDefault,
         });
+        toast.info(`Wallet "${name.trim()}" updated!`);
       } else {
-        await addWallet(userId, {
+        await addWallet(activeUid, {
           name: name.trim(),
           type,
           balance: numBalance,
           color,
           isDefault,
         });
+        toast.success(`Wallet "${name.trim()}" created!`);
       }
-      onSuccess();
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error saving wallet:', err);
-      setError(err.message || 'Failed to save wallet');
+      console.error('[WalletModal] Error saving wallet:', err);
+      const msg = err.message || 'Failed to save wallet';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -113,11 +132,13 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     setSaving(true);
     try {
       await deleteWallet(walletToEdit.id);
-      onSuccess();
+      toast.warning(`Wallet "${walletToEdit.name}" deleted.`);
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Error deleting wallet:', err);
       setError('Failed to delete wallet');
+      toast.error('Failed to delete wallet');
       setSaving(false);
     }
   };

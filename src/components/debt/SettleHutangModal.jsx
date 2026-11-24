@@ -4,12 +4,14 @@
 import { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { getWallets, settleDebtAtomic } from '../../lib/firebase';
 import { formatRupiah } from '../../lib/utils';
 import WalletPicker from '../wallet/WalletPicker';
 
 export default function SettleHutangModal({ isOpen, onClose, debt, onSuccess }) {
   const { user } = useAuth();
+  const toast = useToast();
 
   const [settleAmount, setSettleAmount] = useState('');
   const [walletId, setWalletId]         = useState('');
@@ -89,11 +91,13 @@ export default function SettleHutangModal({ isOpen, onClose, debt, onSuccess }) 
         date: new Date(date),
       });
 
+      toast.success(isFullSettle ? 'Settled in full successfully!' : 'Installment payment recorded successfully!');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Error settling debt:', err);
       setError(err.message || 'Payment failed');
+      toast.error(err.message || 'Payment failed');
     } finally {
       setSaving(false);
     }

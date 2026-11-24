@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { TransactionModalProvider } from './contexts/TransactionModalContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute  from './components/ui/ProtectedRoute';
 import AppShell        from './components/layout/AppShell';
 import LoginPage       from './pages/LoginPage';
@@ -19,33 +20,35 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <TransactionModalProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public */}
-              <Route path="/login" element={<LoginPage />} />
+        <ToastProvider>
+          <TransactionModalProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public */}
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected: wrapped in AppShell with Global Modal & BottomNav */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppShell />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<HomePage />} />
-                <Route path="transaksi" element={<TransaksiPage />} />
-                <Route path="wallet"    element={<WalletPage />} />
-                <Route path="budget"    element={<BudgetPage />} />
-                <Route path="hutang"    element={<HutangPage />} />
-                <Route path="analisis"  element={<AnalisisPage />} />
-              </Route>
+                {/* Protected: wrapped in AppShell with Global Modal & BottomNav */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppShell />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<HomePage />} />
+                  <Route path="transaksi" element={<TransaksiPage />} />
+                  <Route path="wallet"    element={<WalletPage />} />
+                  <Route path="budget"    element={<BudgetPage />} />
+                  <Route path="hutang"    element={<HutangPage />} />
+                  <Route path="analisis"  element={<AnalisisPage />} />
+                </Route>
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </TransactionModalProvider>
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </TransactionModalProvider>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -4,12 +4,14 @@
 import { useState, useEffect } from 'react';
 import { X, Check, HandCoins, AlertCircle, Calendar, User, FileText } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { getWallets, createDebtAtomic } from '../../lib/firebase';
 import { formatRupiah } from '../../lib/utils';
 import WalletPicker from '../wallet/WalletPicker';
 
 export default function CatatHutangModal({ isOpen, onClose, onSuccess, initialType = 'receivable' }) {
   const { user } = useAuth();
+  const toast = useToast();
 
   const [type, setType]         = useState(initialType); // 'debt' | 'receivable'
   const [person, setPerson]     = useState('');
@@ -79,11 +81,13 @@ export default function CatatHutangModal({ isOpen, onClose, onSuccess, initialTy
         dueDate: dueDate || null,
       });
 
+      toast.success(type === 'debt' ? 'Debt record saved successfully!' : 'Loan record saved successfully!');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Error creating debt:', err);
       setError(err.message || 'Failed to save record');
+      toast.error(err.message || 'Failed to save record');
     } finally {
       setSaving(false);
     }

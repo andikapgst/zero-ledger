@@ -4,12 +4,14 @@
 import { useState, useEffect } from 'react';
 import { X, Check, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { saveMonthlyBudgets } from '../../lib/firebase';
 import { ZERO_BASED_EXPENSES, formatRupiah } from '../../lib/utils';
 import CategoryIcon from '../transaction/CategoryIcon';
 
 export default function AturBudgetModal({ isOpen, onClose, month, existingBudgets = [], onSuccess }) {
   const { user } = useAuth();
+  const toast = useToast();
 
   const [budgetValues, setBudgetValues] = useState({});
   const [saving, setSaving]             = useState(false);
@@ -68,11 +70,13 @@ export default function AturBudgetModal({ isOpen, onClose, month, existingBudget
       }));
 
       await saveMonthlyBudgets(user.uid, month, itemsToSave);
+      toast.success(`Budget caps for ${month} saved successfully!`);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Error saving budgets:', err);
       setError('Failed to save monthly budget caps');
+      toast.error('Failed to save monthly budget caps');
     } finally {
       setSaving(false);
     }

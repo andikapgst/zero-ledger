@@ -77,9 +77,20 @@ export async function upsertUserProfile(user) {
 
 // ─── Wallet Helpers ───────────────────────────────────────────────────────────
 export async function getWallets(uid) {
-  const q = query(walletsCol, where('uid', '==', uid), orderBy('createdAt', 'asc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(walletsCol, where('uid', '==', uid));
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Client-side sort by createdAt asc (no composite index needed)
+    return items.sort((a, b) => {
+      const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+      const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+      return tA - tB;
+    });
+  } catch (err) {
+    console.error('getWallets query error:', err);
+    throw err;
+  }
 }
 
 export async function addWallet(uid, data) {
@@ -113,18 +124,27 @@ export async function deleteWallet(walletId) {
 // ─── Transaction Helpers & Atomic Ledger Operations ───────────────────────────
 
 export async function getTransactions(uid, options = {}) {
-  const { limitCount = 300, walletId = null } = options;
-  let q = query(
-    transactionsCol,
-    where('uid', '==', uid),
-    orderBy('date', 'desc'),
-    limit(limitCount)
-  );
-  if (walletId) {
-    q = query(transactionsCol, where('uid', '==', uid), where('walletId', '==', walletId), orderBy('date', 'desc'), limit(limitCount));
+  try {
+    const { limitCount = 300, walletId = null } = options;
+    let q;
+    if (walletId) {
+      q = query(transactionsCol, where('uid', '==', uid), where('walletId', '==', walletId));
+    } else {
+      q = query(transactionsCol, where('uid', '==', uid));
+    }
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Client-side sort by date desc (no composite index needed)
+    items.sort((a, b) => {
+      const tA = a.date?.toMillis ? a.date.toMillis() : (a.date?.seconds ? a.date.seconds * 1000 : (new Date(a.date || a.createdAt || 0)).getTime());
+      const tB = b.date?.toMillis ? b.date.toMillis() : (b.date?.seconds ? b.date.seconds * 1000 : (new Date(b.date || b.createdAt || 0)).getTime());
+      return tB - tA;
+    });
+    return limitCount ? items.slice(0, limitCount) : items;
+  } catch (err) {
+    console.error('getTransactions query error:', err);
+    throw err;
   }
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 /**
@@ -395,9 +415,20 @@ export async function saveMonthlyBudgets(uid, month, budgetItems) {
 
 // ─── Debt / Receivable Helpers (Atomic Settlement) ───────────────────────────
 export async function getDebts(uid) {
-  const q = query(debtsCol, where('uid', '==', uid), orderBy('createdAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(debtsCol, where('uid', '==', uid));
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Client-side sort by createdAt desc (no composite index needed)
+    return items.sort((a, b) => {
+      const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+      const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+      return tB - tA;
+    });
+  } catch (err) {
+    console.error('getDebts query error:', err);
+    throw err;
+  }
 }
 
 /**

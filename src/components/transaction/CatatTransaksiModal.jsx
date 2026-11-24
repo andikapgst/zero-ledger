@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTransactionModal } from '../../contexts/TransactionModalContext';
+import { useToast } from '../../contexts/ToastContext';
 import { getWallets, recordTransactionAtomic } from '../../lib/firebase';
 import {
   ZERO_BASED_EXPENSES,
@@ -68,6 +69,7 @@ const TYPE_CONFIG = {
 export default function CatatTransaksiModal() {
   const { user } = useAuth();
   const { isModalOpen, closeModal, activeType, notifyTransactionSaved } = useTransactionModal();
+  const toast = useToast();
 
   const [wallets, setWallets] = useState([]);
   const [type, setType] = useState('expense');
@@ -191,10 +193,13 @@ export default function CatatTransaksiModal() {
       });
 
       notifyTransactionSaved();
+      const label = TYPE_CONFIG[type]?.label || 'Transaction';
+      toast.success(`${label} recorded successfully!`);
       closeModal();
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err.message || 'Failed to save transaction');
+      toast.error(err.message || 'Failed to save transaction');
     } finally {
       setSaving(false);
     }

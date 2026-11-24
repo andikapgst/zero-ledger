@@ -5,9 +5,11 @@ import { useState, useEffect } from 'react';
 import { X, ArrowDownUp, Check, AlertCircle } from 'lucide-react';
 import { transferBetweenWallets } from '../../lib/firebase';
 import { formatRupiah } from '../../lib/utils';
+import { useToast } from '../../contexts/ToastContext';
 import WalletPicker from './WalletPicker';
 
 export default function TransferModal({ isOpen, onClose, wallets, userId, onSuccess, preselectedFromWalletId }) {
+  const toast = useToast();
   const [fromWalletId, setFromWalletId] = useState('');
   const [toWalletId, setToWalletId]     = useState('');
   const [amount, setAmount]             = useState('');
@@ -93,11 +95,13 @@ export default function TransferModal({ isOpen, onClose, wallets, userId, onSucc
         note,
       });
 
-      onSuccess();
+      toast.success(`Transferred ${formatRupiah(numAmount)} successfully!`);
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Transfer error:', err);
       setError(err.message || 'Failed to complete transfer');
+      toast.error(err.message || 'Failed to complete transfer');
     } finally {
       setSaving(false);
     }

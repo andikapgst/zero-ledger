@@ -16,6 +16,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getWallets, getDebts, addWallet } from '../lib/firebase';
 import { formatRupiah } from '../lib/utils';
 import WalletModal from '../components/wallet/WalletModal';
@@ -50,6 +51,7 @@ const SAMPLE_WALLETS = [
 
 export default function WalletPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [wallets, setWallets]         = useState([]);
   const [debts, setDebts]             = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -139,8 +141,10 @@ export default function WalletPage() {
         await addWallet(user.uid, item);
       }
       await loadData();
+      toast.success('Sample wallets loaded successfully!');
     } catch (err) {
       console.error('Error seeding wallets:', err);
+      toast.error('Failed to load sample wallets');
     } finally {
       setSeeding(false);
     }
