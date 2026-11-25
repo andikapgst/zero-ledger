@@ -97,16 +97,6 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // Firebase REST calls (network-first for freshness)
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firestore-cache',
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
         ],
       },
     }),

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getWallets, getDebts, addWallet } from '../lib/firebase';
+import { getWallets, getDebts, addWallet, subscribeWallets, subscribeDebts } from '../lib/firebase';
 import { formatRupiah } from '../lib/utils';
 import WalletModal from '../components/wallet/WalletModal';
 import TransferModal from '../components/wallet/TransferModal';
@@ -71,8 +71,8 @@ export default function WalletPage() {
     if (!user) return;
     try {
       const [wList, dList] = await Promise.all([
-        getWallets(user.uid),
-        getDebts(user.uid),
+        getWallets(user.uid).catch(err => { console.error('getWallets error:', err); return []; }),
+        getDebts(user.uid).catch(err => { console.error('getDebts error:', err); return []; }),
       ]);
       setWallets(wList);
       setDebts(dList);
@@ -84,7 +84,39 @@ export default function WalletPage() {
   };
 
   useEffect(() => {
-    loadData();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    // Initial load + Realtime subscriptions (instant 0ms updates)
+    const unsubWallets = subscribeWallets(
+      user.uid,
+      (wList) => {
+        setWallets(wList);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Realtime wallet subscription error:', err);
+        setLoading(false);
+      }
+    );
+
+    const unsubDebts = subscribeDebts(
+      user.uid,
+      (dList) => {
+        setDebts(dList);
+      },
+      (err) => {
+        console.error('Realtime debts subscription error:', err);
+      }
+    );
+
+    return () => {
+      unsubWallets();
+      unsubDebts();
+    };
   }, [user]);
 
   const netWorthSummary = useMemo(() => {

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactionModal } from '../contexts/TransactionModalContext';
-import { getWallets, getTransactions, getDebts, getBudgets } from '../lib/firebase';
+import { getWallets, getTransactions, getDebts, getBudgets, subscribeWallets } from '../lib/firebase';
 import { formatRupiah, formatDate, getYearMonth } from '../lib/utils';
 import CategoryIcon from '../components/transaction/CategoryIcon';
 import ThemeToggle from '../components/layout/ThemeToggle';
@@ -41,19 +41,35 @@ export default function HomePage() {
   const currentYearMonth = getYearMonth(new Date());
 
   useEffect(() => {
-    if (!user) return;
-    Promise.all([
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // Live real-time wallet balance subscription
+    const unsubWallets = subscribeWallets(
+      user.uid,
+      (wList) => setWallets(wList),
+      (err) => console.error('HomePage live wallets error:', err)
+    );
+
+    // Fetch dashboard records with resilient allSettled
+    Promise.allSettled([
       getWallets(user.uid),
       getTransactions(user.uid, { limitCount: 200 }),
       getDebts(user.uid),
       getBudgets(user.uid, currentYearMonth),
-    ]).then(([wList, txList, dList, bList]) => {
-      setWallets(wList);
-      setTransactions(txList);
-      setDebts(dList);
-      setBudgets(bList);
+    ]).then(([wRes, txRes, dRes, bRes]) => {
+      if (wRes.status === 'fulfilled') setWallets(wRes.value);
+      if (txRes.status === 'fulfilled') setTransactions(txRes.value);
+      if (dRes.status === 'fulfilled') setDebts(dRes.value);
+      if (bRes.status === 'fulfilled') setBudgets(bRes.value);
       setLoading(false);
     });
+
+    return () => {
+      unsubWallets();
+    };
   }, [user, refreshTrigger, currentYearMonth]);
 
   // Total balance of all wallets

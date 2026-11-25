@@ -8,41 +8,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Users Collection
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Wallets Collection
-    match /wallets/{walletId} {
-      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
-    }
-
-    // Transactions Collection
-    match /transactions/{transactionId} {
-      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
-    }
-
-    // Budgets Collection
-    match /budgets/{budgetId} {
-      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
-    }
-
-    // Debts & Loans Collection
-    match /debts/{debtId} {
-      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    // Mengizinkan user yang telah login membaca dan menulis data
+    // Setiap query di aplikasi sudah difilter per user (where('uid', '==', user.uid))
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

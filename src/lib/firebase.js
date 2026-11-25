@@ -26,6 +26,7 @@ import {
   Timestamp,
   runTransaction,
   writeBatch,
+  onSnapshot,
 } from 'firebase/firestore';
 
 // ─── Firebase Config ────────────────────────────────────────────────────────
@@ -90,6 +91,35 @@ export async function getWallets(uid) {
   } catch (err) {
     console.error('getWallets query error:', err);
     throw err;
+  }
+}
+
+/**
+ * Real-time listener for wallets. Updates instantly on create, edit, delete, or transfer.
+ */
+export function subscribeWallets(uid, onUpdate, onError) {
+  if (!uid) return () => {};
+  try {
+    const q = query(walletsCol, where('uid', '==', uid));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        items.sort((a, b) => {
+          const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+          const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+          return tA - tB;
+        });
+        onUpdate(items);
+      },
+      (err) => {
+        console.error('subscribeWallets error:', err);
+        if (onError) onError(err);
+      }
+    );
+  } catch (err) {
+    console.error('Failed to attach subscribeWallets listener:', err);
+    return () => {};
   }
 }
 
@@ -428,6 +458,35 @@ export async function getDebts(uid) {
   } catch (err) {
     console.error('getDebts query error:', err);
     throw err;
+  }
+}
+
+/**
+ * Real-time listener for debts & receivables.
+ */
+export function subscribeDebts(uid, onUpdate, onError) {
+  if (!uid) return () => {};
+  try {
+    const q = query(debtsCol, where('uid', '==', uid));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        items.sort((a, b) => {
+          const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+          const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+          return tB - tA;
+        });
+        onUpdate(items);
+      },
+      (err) => {
+        console.error('subscribeDebts error:', err);
+        if (onError) onError(err);
+      }
+    );
+  } catch (err) {
+    console.error('Failed to attach subscribeDebts listener:', err);
+    return () => {};
   }
 }
 
