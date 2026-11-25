@@ -1,7 +1,7 @@
 // src/contexts/ToastContext.jsx
 // Lightweight, responsive Toast notification system styled to match Zero Ledger's theme
 
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
@@ -37,28 +37,108 @@ const TOAST_VARIANTS = {
   },
 };
 
+function ToastCard({ toast, variant, exiting, barWidth, onHide }) {
+  const Icon = variant.icon;
+  return (
+    <div
+      className={`
+        relative flex items-center gap-3 p-3.5 rounded-2xl overflow-hidden
+        bg-surface/95 dark:bg-[#121A1E]/95
+        border ${variant.border}
+        shadow-2xl shadow-black/25 backdrop-blur-md
+        transition-all
+        ${exiting
+          ? 'opacity-0 -translate-y-2 scale-95 duration-300'
+          : 'opacity-100 translate-y-0 scale-100 duration-200'}
+      `}
+    >
+      {/* Icon Pill */}
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${variant.badgeBg}`}>
+        <Icon size={20} className="stroke-[2.2]" />
+      </div>
+
+      {/* Message Body */}
+      <div className="flex-1 min-w-0 pr-1">
+        <p className={`text-xs font-bold ${variant.titleColor}`}>
+          {toast.title}
+        </p>
+        <p className="text-[12px] text-muted line-clamp-2 mt-0.5 font-medium leading-snug">
+          {toast.message}
+        </p>
+      </div>
+
+      {/* Close Button */}
+      <button
+        onClick={onHide}
+        className="w-7 h-7 rounded-lg bg-subcard hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-muted hover:text-main transition-colors cursor-pointer shrink-0"
+        aria-label="Close notification"
+      >
+        <X size={14} />
+      </button>
+
+      {/* Progress Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/10 dark:bg-white/5">
+        <div
+          className={`h-full ${variant.indicator} opacity-80`}
+          style={{
+            width: `${barWidth}%`,
+            transition: barWidth < 100 ? 'width 5s linear' : 'none',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null);
-  const timerRef = useRef(null);
+  const [exiting, setExiting] = useState(false);
+  const [barWidth, setBarWidth] = useState(100);
+
+  const autoHideTimer = useRef(null);
+  const exitTimer = useRef(null);
 
   const hideToast = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setToast(null);
+    clearTimeout(autoHideTimer.current);
+    clearTimeout(exitTimer.current);
+    setExiting(true);
+    exitTimer.current = setTimeout(() => {
+      setToast(null);
+      setExiting(false);
+      setBarWidth(100);
+    }, 300);
   }, []);
 
-  const showToast = useCallback((message, type = 'success', title = null, duration = 3500) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+  const showToast = useCallback((message, type = 'success', title = null, duration = 5000) => {
+    clearTimeout(autoHideTimer.current);
+    clearTimeout(exitTimer.current);
 
-    setToast({
-      id: Date.now(),
-      message,
-      type: TOAST_VARIANTS[type] ? type : 'success',
-      title: title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Notice' : 'Info'),
+    const resolvedType = TOAST_VARIANTS[type] ? type : 'success';
+    const resolvedTitle = title || {
+      success: 'Berhasil',
+      error: 'Gagal',
+      warning: 'Dihapus',
+      info: 'Info',
+    }[resolvedType];
+
+    setExiting(false);
+    setBarWidth(100);
+    setToast({ id: Date.now(), message, type: resolvedType, title: resolvedTitle });
+
+    // Trigger bar shrink after two frames so the browser paints 100% first
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setBarWidth(0));
     });
 
-    timerRef.current = setTimeout(() => {
-      setToast(null);
-    }, duration);
+    autoHideTimer.current = setTimeout(hideToast, duration);
+  }, [hideToast]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(autoHideTimer.current);
+      clearTimeout(exitTimer.current);
+    };
   }, []);
 
   const toastHelpers = {
@@ -71,47 +151,28 @@ export function ToastProvider({ children }) {
   };
 
   const currentVariant = toast ? (TOAST_VARIANTS[toast.type] || TOAST_VARIANTS.success) : null;
-  const IconComponent = currentVariant ? currentVariant.icon : null;
 
   return (
     <ToastContext.Provider value={toastHelpers}>
       {children}
 
-      {/* Floating Top Notification Toast */}
+      {/* Toast Container: center on mobile, top-right on desktop */}
       {toast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm pointer-events-auto">
-          <div
-            className={`
-              relative flex items-center gap-3 p-3.5 rounded-2xl
-              bg-surface/95 dark:bg-[#121A1E]/95
-              border ${currentVariant.border}
-              shadow-2xl shadow-black/20 backdrop-blur-md
-              animate-in slide-in-from-top-4 fade-in duration-200 ease-out
-            `}
-          >
-            {/* Icon Pill */}
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${currentVariant.badgeBg}`}>
-              <IconComponent size={20} className="stroke-[2.2]" />
-            </div>
-
-            {/* Message Body */}
-            <div className="flex-1 min-w-0 pr-1">
-              <p className={`text-xs font-bold ${currentVariant.titleColor}`}>
-                {toast.title}
-              </p>
-              <p className="text-[12px] text-muted line-clamp-2 mt-0.5 font-medium leading-snug">
-                {toast.message}
-              </p>
-            </div>
-
-            {/* Close Button */}
-            <button
-              onClick={hideToast}
-              className="w-7 h-7 rounded-lg bg-subcard hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-muted hover:text-main transition-colors cursor-pointer shrink-0"
-              aria-label="Close notification"
-            >
-              <X size={14} />
-            </button>
+        <div
+          className={`
+            fixed z-[100] pointer-events-none
+            top-4 left-3 right-3
+            sm:left-auto sm:right-4 sm:top-4 sm:w-80
+          `}
+        >
+          <div className="pointer-events-auto">
+            <ToastCard
+              toast={toast}
+              variant={currentVariant}
+              exiting={exiting}
+              barWidth={barWidth}
+              onHide={hideToast}
+            />
           </div>
         </div>
       )}

@@ -56,6 +56,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     }
     setError('');
     setConfirmDelete(false);
+    setSaving(false);
   }, [walletToEdit, isOpen]);
 
   if (!isOpen) return null;
@@ -75,8 +76,6 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     e.stopPropagation();
 
     const activeUid = userId || user?.uid;
-    console.log('[WalletModal] handleSave called, activeUid:', activeUid, 'isEdit:', isEdit);
-
     if (!activeUid) {
       setError('User not authenticated. Please log in again.');
       toast.error('Not authenticated. Please log in again.');
@@ -124,15 +123,24 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!walletToEdit?.id) return;
+
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
     }
+
     setSaving(true);
     try {
       await deleteWallet(walletToEdit.id);
       toast.warning(`Wallet "${walletToEdit.name}" deleted.`);
+      setSaving(false);
+      setConfirmDelete(false);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
@@ -140,6 +148,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       setError('Failed to delete wallet');
       toast.error('Failed to delete wallet');
       setSaving(false);
+      setConfirmDelete(false);
     }
   };
 

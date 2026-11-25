@@ -428,7 +428,10 @@ export default function WalletPage() {
 
       <WalletModal
         isOpen={walletModalOpen}
-        onClose={() => setWalletModalOpen(false)}
+        onClose={() => {
+          setWalletModalOpen(false);
+          setEditingWallet(null);
+        }}
         walletToEdit={editingWallet}
         userId={user?.uid}
         onSuccess={loadData}
