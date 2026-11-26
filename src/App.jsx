@@ -15,6 +15,7 @@ import WalletPage      from './pages/WalletPage';
 import AnalisisPage    from './pages/AnalisisPage';
 import BudgetPage      from './pages/BudgetPage';
 import HutangPage      from './pages/HutangPage';
+import ProfilePage     from './pages/ProfilePage';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
                   <Route path="budget"    element={<BudgetPage />} />
                   <Route path="hutang"    element={<HutangPage />} />
                   <Route path="analisis"  element={<AnalisisPage />} />
+                  <Route path="profile"   element={<ProfilePage />} />
                 </Route>
 
                 {/* Catch-all */}

@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updateProfile,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -74,6 +75,25 @@ export async function upsertUserProfile(user) {
     });
   }
   return ref;
+}
+
+export async function updateUserDisplayName(newName) {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('User not authenticated');
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error('Display name cannot be empty');
+
+  await updateProfile(currentUser, { displayName: trimmed });
+  const ref = doc(db, 'users', currentUser.uid);
+  await setDoc(ref, {
+    uid:         currentUser.uid,
+    displayName: trimmed,
+    email:       currentUser.email,
+    photoURL:    currentUser.photoURL,
+    updatedAt:   serverTimestamp(),
+  }, { merge: true });
+
+  return trimmed;
 }
 
 // ─── Wallet Helpers ───────────────────────────────────────────────────────────

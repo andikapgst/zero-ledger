@@ -27,7 +27,7 @@ import CategoryIcon from '../components/transaction/CategoryIcon';
 import ThemeToggle from '../components/layout/ThemeToggle';
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, displayName } = useAuth();
   const { openModal, refreshTrigger } = useTransactionModal();
   const navigate = useNavigate();
 
@@ -36,7 +36,9 @@ export default function HomePage() {
   const [debts,        setDebts]        = useState([]);
   const [budgets,      setBudgets]      = useState([]);
   const [loading,      setLoading]      = useState(true);
-  const [hideBalance,  setHideBalance]  = useState(false);
+  const [hideBalance,  setHideBalance]  = useState(
+    () => localStorage.getItem('zl_hide_balance_default') === 'true'
+  );
 
   const currentYearMonth = getYearMonth(new Date());
 
@@ -151,16 +153,41 @@ export default function HomePage() {
     return transactions.slice(0, 5);
   }, [transactions]);
 
-  const firstName = user?.displayName?.split(' ')[0] ?? 'Hello';
+  const fullName = displayName || user?.displayName || 'Hello';
+  const firstName = fullName.split(' ')[0] || 'Hello';
+  const userInitials = fullName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('') || 'ZL';
 
   return (
     <div className="px-4 pt-12 pb-8 space-y-6 max-w-lg mx-auto">
-      {/* ── Top Header with Theme Switcher ─────────────────────── */}
+      {/* ── Top Header with Profile & Theme Switcher ────────────── */}
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-muted text-xs">Welcome back 👋</p>
-          <h1 className="text-white font-bold text-xl">{firstName}</h1>
-        </div>
+        <button
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-3 text-left group cursor-pointer"
+          title="View Profile & Settings"
+        >
+          {user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={fullName}
+              referrerPolicy="no-referrer"
+              className="w-10 h-10 rounded-full object-cover border-2 border-teal/40 group-hover:border-teal transition-colors shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-teal/15 border-2 border-teal/40 group-hover:border-teal flex items-center justify-center text-teal font-bold text-sm transition-colors shrink-0">
+              {userInitials}
+            </div>
+          )}
+          <div>
+            <p className="text-muted text-xs">Welcome back 👋</p>
+            <h1 className="text-main font-bold text-xl group-hover:text-teal transition-colors">{firstName}</h1>
+          </div>
+        </button>
         <div className="flex items-center gap-2">
           {/* Light / Dark Mode Toggle */}
           <ThemeToggle />

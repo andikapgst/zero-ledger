@@ -55,7 +55,9 @@ export default function WalletPage() {
   const [wallets, setWallets]         = useState([]);
   const [debts, setDebts]             = useState([]);
   const [loading, setLoading]         = useState(true);
-  const [hideAmount, setHideAmount]   = useState(false);
+  const [hideAmount, setHideAmount]   = useState(
+    () => localStorage.getItem('zl_hide_balance_default') === 'true'
+  );
   const [seeding, setSeeding]         = useState(false);
 
   // Modals state

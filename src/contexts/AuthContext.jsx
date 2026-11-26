@@ -1,15 +1,16 @@
 // src/contexts/AuthContext.jsx
-// Provides global authentication state via React Context
+// Provides global authentication state & profile helpers via React Context
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, signInWithGoogle, signOut, upsertUserProfile } from '../lib/firebase';
+import { auth, signInWithGoogle, signOut, upsertUserProfile, updateUserDisplayName } from '../lib/firebase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(undefined); // undefined = loading
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]               = useState(undefined); // undefined = loading
+  const [displayName, setDisplayName] = useState('');
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
     // Safety timer: maximum 3 seconds wait for auth resolution
@@ -26,6 +27,7 @@ export function AuthProvider({ children }) {
             clearTimeout(timeoutId);
             if (firebaseUser) {
               setUser(firebaseUser);
+              setDisplayName(firebaseUser.displayName || '');
               setLoading(false);
 
               try {
@@ -35,6 +37,7 @@ export function AuthProvider({ children }) {
               }
             } else {
               setUser(null);
+              setDisplayName('');
               setLoading(false);
             }
           },
@@ -63,8 +66,14 @@ export function AuthProvider({ children }) {
   const login  = () => signInWithGoogle();
   const logout = () => signOut();
 
+  const updateDisplayName = useCallback(async (newName) => {
+    const saved = await updateUserDisplayName(newName);
+    setDisplayName(saved);
+    return saved;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, displayName, loading, login, logout, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   );
