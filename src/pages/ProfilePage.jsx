@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.jsx
-// User Profile & App Preferences: Edit Display Name, Privacy Toggle, Theme, CSV Export, Sign Out
+// User Profile & App Preferences: Edit Display Name, PIN App Lock, Multi-Currency Rate, Privacy, CSV Export, Sign Out
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,16 +16,23 @@ import {
   LogOut,
   Wallet,
   ArrowLeftRight,
+  Lock,
+  RefreshCw,
+  DollarSign,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { usePinLock } from '../contexts/PinLockContext';
 import { getWallets, getTransactions } from '../lib/firebase';
+import { getStoredUsdRate, setStoredUsdRate, fetchLiveUsdRate } from '../lib/currency';
+import { formatRupiah } from '../lib/utils';
 import ThemeToggle from '../components/layout/ThemeToggle';
 
 const HIDE_BALANCE_KEY = 'zl_hide_balance_default';
 
 export default function ProfilePage() {
   const { user, displayName, updateDisplayName, logout } = useAuth();
+  const { pinEnabled, enablePin, disablePin, lockNow } = usePinLock();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -40,6 +47,17 @@ export default function ProfilePage() {
   const [stats, setStats]               = useState({ wallets: 0, transactions: 0 });
   const [exporting, setExporting]       = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  // PIN Setup Modal state
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [newPin, setNewPin]             = useState('');
+  const [confirmPin, setConfirmPin]     = useState('');
+
+  // Multi-Currency USD -> IDR rate state
+  const [usdRate, setUsdRate]           = useState(() => getStoredUsdRate());
+  const [refreshingRate, setRefreshingRate] = useState(false);
+  const [editingRate, setEditingRate]   = useState(false);
+  const [rateInput, setRateInput]       = useState(String(getStoredUsdRate()));
 
   useEffect(() => {
     setNameInput(currentName);
@@ -89,6 +107,54 @@ export default function ProfilePage() {
     toast.info(next ? 'Balances will be hidden by default' : 'Balances will be visible by default');
   };
 
+  const handleTogglePin = () => {
+    if (pinEnabled) {
+      disablePin();
+      toast.info('PIN App Lock disabled');
+    } else {
+      setNewPin('');
+      setConfirmPin('');
+      setPinModalOpen(true);
+    }
+  };
+
+  const handleSavePin = async (e) => {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(newPin)) {
+      toast.error('PIN must be 4 digits');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error('PIN confirmation does not match');
+      return;
+    }
+    await enablePin(newPin);
+    setPinModalOpen(false);
+    toast.success('4-digit PIN App Lock enabled!');
+  };
+
+  const handleRefreshRate = async () => {
+    setRefreshingRate(true);
+    const updated = await fetchLiveUsdRate(true);
+    setUsdRate(updated);
+    setRateInput(String(updated));
+    setRefreshingRate(false);
+    toast.success(`Live rate updated: 1 USD = ${formatRupiah(updated)}`);
+  };
+
+  const handleSaveCustomRate = (e) => {
+    e.preventDefault();
+    const num = parseInt(rateInput.replace(/\D/g, ''), 10);
+    if (!num || num < 1000) {
+      toast.error('Enter a valid IDR rate');
+      return;
+    }
+    const saved = setStoredUsdRate(num);
+    setUsdRate(saved);
+    setEditingRate(false);
+    toast.success(`Custom rate saved: 1 USD = ${formatRupiah(saved)}`);
+  };
+
   const handleExportCSV = async () => {
     if (!user?.uid || exporting) return;
     setExporting(true);
@@ -99,7 +165,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const headers = ['Date', 'Type', 'Category', 'Amount (IDR)', 'Note'];
+      const headers = ['Date', 'Type', 'Category', 'Amount', 'Note'];
       const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const rows = txs.map((tx) => {
         const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date || Date.now());
@@ -283,8 +349,116 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Preferences & Data */}
+      {/* Security & Preferences */}
       <div className="bg-surface border border-bline rounded-3xl divide-y divide-bline overflow-hidden">
+        {/* PIN App Lock */}
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-teal/15 text-teal flex items-center justify-center shrink-0">
+                <Lock size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-main text-sm font-semibold">PIN App Lock</p>
+                <p className="text-muted text-[11px] leading-snug">
+                  Require a 4-digit PIN when opening the app
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleTogglePin}
+              role="switch"
+              aria-checked={pinEnabled}
+              className={`w-11 h-6 rounded-full transition-colors p-0.5 cursor-pointer shrink-0 ${
+                pinEnabled ? 'bg-teal' : 'bg-subcard border border-bline'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  pinEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {pinEnabled && (
+            <div className="flex items-center gap-2 pl-12">
+              <button
+                onClick={lockNow}
+                className="px-3 py-1.5 rounded-xl bg-subcard hover:bg-teal/15 text-teal text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Lock App Now
+              </button>
+              <button
+                onClick={() => {
+                  setNewPin('');
+                  setConfirmPin('');
+                  setPinModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-subcard text-muted hover:text-main text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Change PIN
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Multi-Currency USD -> IDR Rate */}
+        <div className="p-4 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center shrink-0">
+                <DollarSign size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-main text-sm font-semibold">USD → IDR Rate</p>
+                <p className="text-muted text-[11px]">
+                  1 USD = <span className="text-main font-semibold">{formatRupiah(usdRate)}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => {
+                  setRateInput(String(usdRate));
+                  setEditingRate((v) => !v);
+                }}
+                className="p-2 rounded-xl bg-subcard text-muted hover:text-main transition-colors cursor-pointer"
+                title="Edit custom rate"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={handleRefreshRate}
+                disabled={refreshingRate}
+                className="p-2 rounded-xl bg-subcard text-teal hover:bg-teal/15 transition-colors cursor-pointer disabled:opacity-50"
+                title="Refresh live rate"
+              >
+                <RefreshCw size={14} className={refreshingRate ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {editingRate && (
+            <form onSubmit={handleSaveCustomRate} className="flex items-center gap-2 pl-12">
+              <input
+                inputMode="numeric"
+                value={rateInput}
+                onChange={(e) => setRateInput(e.target.value.replace(/\D/g, ''))}
+                className="w-32 bg-bg border border-teal/50 rounded-xl px-3 py-1.5 text-xs font-semibold text-main outline-none"
+                placeholder="16000"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1.5 rounded-xl bg-teal text-[#0B1215] text-xs font-bold cursor-pointer"
+              >
+                Save
+              </button>
+            </form>
+          )}
+        </div>
+
         {/* Privacy Default Toggle */}
         <div className="p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -350,8 +524,71 @@ export default function ProfilePage() {
       </button>
 
       <p className="text-center text-muted/60 text-[11px] pt-1">
-        Zero Ledger PWA • Currency: IDR (Rp)
+        Zero Ledger PWA • Multi-Currency IDR & USD
       </p>
+
+      {/* 4-Digit PIN Setup Modal */}
+      {pinModalOpen && (
+        <div
+          onClick={() => setPinModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={handleSavePin}
+            className="bg-surface border border-bline rounded-3xl p-5 w-full max-w-xs space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-main font-bold text-base">Set 4-Digit PIN</h3>
+              <button
+                type="button"
+                onClick={() => setPinModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-subcard text-muted hover:text-main flex items-center justify-center cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-muted text-xs block mb-1">New PIN (4 digits)</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  autoFocus
+                  className="w-full bg-bg border border-bline focus:border-teal/50 rounded-2xl px-4 py-2.5 text-center text-main text-lg font-bold tracking-[0.5em] outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-muted text-xs block mb-1">Confirm PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  className="w-full bg-bg border border-bline focus:border-teal/50 rounded-2xl px-4 py-2.5 text-center text-main text-lg font-bold tracking-[0.5em] outline-none"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-2xl bg-teal text-[#0B1215] font-bold text-sm shadow-lg shadow-teal/30 cursor-pointer"
+            >
+              Enable PIN Lock
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

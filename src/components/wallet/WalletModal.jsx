@@ -33,6 +33,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
 
   const [name, setName]         = useState('');
   const [type, setType]         = useState('bank');
+  const [currency, setCurrency] = useState('IDR');
   const [balance, setBalance]   = useState('');
   const [color, setColor]       = useState('#2DD4BF');
   const [isDefault, setIsDefault] = useState(false);
@@ -44,12 +45,14 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     if (walletToEdit) {
       setName(walletToEdit.name || '');
       setType(walletToEdit.type || 'bank');
+      setCurrency(walletToEdit.currency || 'IDR');
       setBalance(walletToEdit.balance !== undefined ? String(walletToEdit.balance) : '');
       setColor(walletToEdit.color || '#2DD4BF');
       setIsDefault(Boolean(walletToEdit.isDefault));
     } else {
       setName('');
       setType('bank');
+      setCurrency('IDR');
       setBalance('');
       setColor('#2DD4BF');
       setIsDefault(false);
@@ -62,12 +65,21 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
   if (!isOpen) return null;
 
   const handleBalanceChange = (e) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    setBalance(raw);
+    if (currency === 'USD') {
+      // Allow numbers and a single decimal point
+      const raw = e.target.value.replace(/[^0-9.]/g, '');
+      const parts = raw.split('.');
+      const cleaned = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw;
+      setBalance(cleaned);
+    } else {
+      const raw = e.target.value.replace(/\D/g, '');
+      setBalance(raw);
+    }
   };
 
   const formatDisplayBalance = (raw) => {
     if (!raw) return '';
+    if (currency === 'USD') return raw;
     return new Intl.NumberFormat('id-ID').format(parseInt(raw, 10));
   };
 
@@ -87,7 +99,9 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       return;
     }
 
-    const numBalance = balance ? parseInt(balance.replace(/\./g, ''), 10) : 0;
+    const numBalance = balance
+      ? (currency === 'USD' ? parseFloat(balance) || 0 : parseInt(balance.replace(/\./g, ''), 10) || 0)
+      : 0;
     setSaving(true);
     setError('');
 
@@ -96,6 +110,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
         await updateWallet(walletToEdit.id, {
           name: name.trim(),
           type,
+          currency,
           balance: numBalance,
           color,
           isDefault,
@@ -105,6 +120,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
         await addWallet(activeUid, {
           name: name.trim(),
           type,
+          currency,
           balance: numBalance,
           color,
           isDefault,
@@ -228,17 +244,38 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           </div>
 
           <div>
-            <label className="text-muted text-xs font-medium block mb-1.5">
-              {isEdit ? 'Current Balance (Rp)' : 'Initial Balance (Rp)'}
-            </label>
-            <div className="flex items-center gap-2 bg-bg border border-white/5 rounded-2xl px-4 py-3 focus-within:border-teal/50">
-              <span className="text-muted font-bold text-sm">Rp</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-muted text-xs font-medium">
+                {isEdit ? `Current Balance (${currency})` : `Initial Balance (${currency})`}
+              </label>
+              <div className="flex items-center gap-1 bg-bg border border-bline rounded-xl p-0.5">
+                {['IDR', 'USD'].map((cur) => (
+                  <button
+                    key={cur}
+                    type="button"
+                    onClick={() => {
+                      setCurrency(cur);
+                      setBalance('');
+                    }}
+                    className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      currency === cur
+                        ? 'bg-teal text-[#0B1215] shadow-sm'
+                        : 'text-muted hover:text-main'
+                    }`}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-bg border border-bline rounded-2xl px-4 py-3 focus-within:border-teal/50">
+              <span className="text-muted font-bold text-sm">{currency === 'USD' ? '$' : 'Rp'}</span>
               <input
-                inputMode="numeric"
+                inputMode={currency === 'USD' ? 'decimal' : 'numeric'}
                 value={formatDisplayBalance(balance)}
                 onChange={handleBalanceChange}
-                placeholder="0"
-                className="bg-transparent text-white font-bold text-lg outline-none flex-1 placeholder:text-muted/30"
+                placeholder={currency === 'USD' ? '0.00' : '0'}
+                className="bg-transparent text-main font-bold text-lg outline-none flex-1 placeholder:text-muted/30"
               />
             </div>
           </div>

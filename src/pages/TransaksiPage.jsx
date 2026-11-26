@@ -23,6 +23,7 @@ import {
   getYearMonth,
 } from '../lib/utils';
 import CategoryIcon from '../components/transaction/CategoryIcon';
+import EditTransactionModal from '../components/transaction/EditTransactionModal';
 import WalletLogo from '../components/wallet/WalletLogo';
 import ThemeToggle from '../components/layout/ThemeToggle';
 
@@ -43,6 +44,7 @@ export default function TransaksiPage() {
   const [selectedWallet, setSelectedWallet]   = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [editingTx, setEditingTx]               = useState(null);
 
   const currentYearMonth = getYearMonth(selectedDate);
 
@@ -473,18 +475,25 @@ export default function TransaksiPage() {
 
               <div className="bg-surface rounded-3xl border border-white/5 divide-y divide-white/5 overflow-hidden">
                 {group.items.map(tx => (
-                  <TransactionRow key={tx.id} tx={tx} />
+                  <TransactionRow key={tx.id} tx={tx} onClick={() => setEditingTx(tx)} />
                 ))}
               </div>
             </div>
           ))
         )}
       </div>
+
+      <EditTransactionModal
+        isOpen={Boolean(editingTx)}
+        onClose={() => setEditingTx(null)}
+        transaction={editingTx}
+        onSaved={fetchData}
+      />
     </div>
   );
 }
 
-function TransactionRow({ tx }) {
+function TransactionRow({ tx, onClick }) {
   const isIncome   = tx.type === 'income';
   const isTransfer = tx.type === 'transfer';
   const isSavings  = tx.type === 'savings';
@@ -523,7 +532,10 @@ function TransactionRow({ tx }) {
   }
 
   return (
-    <div className="p-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors">
+    <div
+      onClick={onClick}
+      className="p-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer"
+    >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
           <CategoryIcon category={tx.category} size={20} />

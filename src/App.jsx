@@ -6,6 +6,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { TransactionModalProvider } from './contexts/TransactionModalContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { PinLockProvider } from './contexts/PinLockContext';
+import PinLockScreen   from './components/auth/PinLockScreen';
 import ProtectedRoute  from './components/ui/ProtectedRoute';
 import AppShell        from './components/layout/AppShell';
 import LoginPage       from './pages/LoginPage';
@@ -22,9 +24,11 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
-          <TransactionModalProvider>
-            <BrowserRouter>
-              <Routes>
+          <PinLockProvider>
+            <TransactionModalProvider>
+              <BrowserRouter>
+                <PinLockScreen />
+                <Routes>
                 {/* Public */}
                 <Route path="/login" element={<LoginPage />} />
 
@@ -48,8 +52,9 @@ export default function App() {
                 {/* Catch-all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </BrowserRouter>
-          </TransactionModalProvider>
+              </BrowserRouter>
+            </TransactionModalProvider>
+          </PinLockProvider>
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

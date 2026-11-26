@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { getWallets, getDebts, addWallet, subscribeWallets, subscribeDebts } from '../lib/firebase';
 import { formatRupiah } from '../lib/utils';
+import { formatCurrency, toIdr, getStoredUsdRate, fetchLiveUsdRate } from '../lib/currency';
 import WalletModal from '../components/wallet/WalletModal';
 import TransferModal from '../components/wallet/TransferModal';
 import WalletLogo from '../components/wallet/WalletLogo';
@@ -58,6 +59,7 @@ export default function WalletPage() {
   const [hideAmount, setHideAmount]   = useState(
     () => localStorage.getItem('zl_hide_balance_default') === 'true'
   );
+  const [usdRate, setUsdRate]         = useState(() => getStoredUsdRate());
   const [seeding, setSeeding]         = useState(false);
 
   // Modals state
@@ -121,14 +123,18 @@ export default function WalletPage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    fetchLiveUsdRate().then(setUsdRate);
+  }, []);
+
   const netWorthSummary = useMemo(() => {
     const liquidAssets = wallets
       .filter(w => ['bank', 'e-wallet', 'cash'].includes(w.type))
-      .reduce((s, w) => s + (Number(w.balance) || 0), 0);
+      .reduce((s, w) => s + toIdr(w.balance, w.currency, usdRate), 0);
 
     const investments = wallets
       .filter(w => w.type === 'investment')
-      .reduce((s, w) => s + (Number(w.balance) || 0), 0);
+      .reduce((s, w) => s + toIdr(w.balance, w.currency, usdRate), 0);
 
     const totalAssets = liquidAssets + investments;
 
@@ -145,7 +151,7 @@ export default function WalletPage() {
       totalDebts,
       netWorth,
     };
-  }, [wallets, debts]);
+  }, [wallets, debts, usdRate]);
 
   const filteredWallets = useMemo(() => {
     if (activeTab === 'all') return wallets;
@@ -391,8 +397,13 @@ export default function WalletPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-muted text-xs capitalize mt-0.5">
-                          {TYPE_LABELS[w.type] || w.type}
+                        <p className="text-muted text-xs capitalize mt-0.5 flex items-center gap-1.5">
+                          <span>{TYPE_LABELS[w.type] || w.type}</span>
+                          {w.currency === 'USD' && (
+                            <span className="px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-400 text-[9px] font-bold">
+                              USD
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -417,9 +428,16 @@ export default function WalletPage() {
 
                   <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
                     <span className="text-[11px] text-muted">Current Balance</span>
-                    <span className="text-white font-bold text-base">
-                      {hideAmount ? '••••••••' : formatRupiah(w.balance || 0)}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-white font-bold text-base block">
+                        {hideAmount ? '••••••••' : formatCurrency(w.balance || 0, w.currency || 'IDR')}
+                      </span>
+                      {w.currency === 'USD' && !hideAmount && (
+                        <span className="text-[10px] text-muted">
+                          ≈ {formatRupiah(toIdr(w.balance || 0, 'USD', usdRate))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

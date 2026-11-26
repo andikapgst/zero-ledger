@@ -23,7 +23,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTransactionModal } from '../contexts/TransactionModalContext';
 import { getWallets, getTransactions, getDebts, getBudgets, subscribeWallets } from '../lib/firebase';
 import { formatRupiah, formatDate, getYearMonth } from '../lib/utils';
+import { toIdr, getStoredUsdRate, fetchLiveUsdRate } from '../lib/currency';
 import CategoryIcon from '../components/transaction/CategoryIcon';
+import EditTransactionModal from '../components/transaction/EditTransactionModal';
 import ThemeToggle from '../components/layout/ThemeToggle';
 
 export default function HomePage() {
@@ -39,8 +41,14 @@ export default function HomePage() {
   const [hideBalance,  setHideBalance]  = useState(
     () => localStorage.getItem('zl_hide_balance_default') === 'true'
   );
+  const [usdRate,      setUsdRate]      = useState(() => getStoredUsdRate());
+  const [editingTx,    setEditingTx]    = useState(null);
 
   const currentYearMonth = getYearMonth(new Date());
+
+  useEffect(() => {
+    fetchLiveUsdRate().then(setUsdRate);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -74,8 +82,8 @@ export default function HomePage() {
     };
   }, [user, refreshTrigger, currentYearMonth]);
 
-  // Total balance of all wallets
-  const totalBalance = wallets.reduce((s, w) => s + (Number(w.balance) || 0), 0);
+  // Total balance of all wallets (converting USD wallets to IDR)
+  const totalBalance = wallets.reduce((s, w) => s + toIdr(w.balance, w.currency, usdRate), 0);
 
   // Month transactions (current month)
   const currentMonthTxs = useMemo(() => {
@@ -401,16 +409,32 @@ export default function HomePage() {
         ) : (
           <div className="space-y-2">
             {recentTransactions.map(tx => (
-              <RecentTransactionRow key={tx.id} tx={tx} hideBalance={hideBalance} />
+              <RecentTransactionRow
+                key={tx.id}
+                tx={tx}
+                hideBalance={hideBalance}
+                onClick={() => setEditingTx(tx)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      <EditTransactionModal
+        isOpen={Boolean(editingTx)}
+        onClose={() => setEditingTx(null)}
+        transaction={editingTx}
+        onSaved={() => {
+          if (user) {
+            getTransactions(user.uid, { limitCount: 200 }).then(setTransactions).catch(console.error);
+          }
+        }}
+      />
     </div>
   );
 }
 
-function RecentTransactionRow({ tx, hideBalance }) {
+function RecentTransactionRow({ tx, hideBalance, onClick }) {
   const isIncome   = tx.type === 'income';
   const isTransfer = tx.type === 'transfer';
   const isSavings  = tx.type === 'savings';
@@ -433,7 +457,10 @@ function RecentTransactionRow({ tx, hideBalance }) {
   }
 
   return (
-    <div className="bg-surface rounded-2xl p-3.5 border border-white/5 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
+    <div
+      onClick={onClick}
+      className="bg-surface rounded-2xl p-3.5 border border-white/5 flex items-center gap-3 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer"
+    >
       <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
         <CategoryIcon category={tx.category} size={18} />
       </div>

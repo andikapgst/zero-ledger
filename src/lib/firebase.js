@@ -148,6 +148,7 @@ export async function addWallet(uid, data) {
     uid,
     name:      data.name,
     type:      data.type || 'bank',
+    currency:  data.currency || 'IDR',
     balance:   Number(data.balance) || 0,
     color:     data.color || '#2DD4BF',
     isDefault: data.isDefault ?? false,
@@ -415,6 +416,209 @@ export async function transferBetweenWallets(uid, params) {
 
 export async function addTransaction(uid, data) {
   return recordTransactionAtomic(uid, data);
+}
+
+/**
+ * Atomically update an existing transaction and adjust affected wallet balances.
+ */
+export async function updateTransactionAtomic(txId, newData) {
+  if (!txId) throw new Error('Transaction ID is required');
+
+  const txRef = doc(db, 'transactions', txId);
+
+  return runTransaction(db, async (transaction) => {
+    const txDoc = await transaction.get(txRef);
+    if (!txDoc.exists()) throw new Error('Transaksi tidak ditemukan');
+    const oldTx = txDoc.data();
+
+    const type = oldTx.type;
+    const oldAmt = Number(oldTx.amount) || 0;
+    const oldFee = Number(oldTx.adminFee) || 0;
+
+    const newAmt = Number(newData.amount);
+    const newFee = Number(newData.adminFee) || 0;
+    if (!newAmt || newAmt <= 0) throw new Error('Nominal transaksi harus lebih besar dari 0');
+
+    const newWalletId = newData.walletId ?? oldTx.walletId ?? null;
+    const newToWalletId = newData.toWalletId ?? oldTx.toWalletId ?? null;
+
+    if (type === 'transfer') {
+      if (!newWalletId || !newToWalletId) throw new Error('Pilih wallet asal dan tujuan');
+      if (newWalletId === newToWalletId) throw new Error('Wallet asal dan tujuan tidak boleh sama');
+    }
+
+    // Collect all unique wallet IDs to read BEFORE any writes
+    const walletIds = [...new Set([
+      oldTx.walletId,
+      oldTx.toWalletId,
+      newWalletId,
+      newToWalletId,
+    ].filter(Boolean))];
+
+    const walletState = {};
+    for (const wid of walletIds) {
+      const wRef = doc(db, 'wallets', wid);
+      const wDoc = await transaction.get(wRef);
+      if (wDoc.exists()) {
+        const d = wDoc.data();
+        walletState[wid] = {
+          ref: wRef,
+          balance: Number(d.balance) || 0,
+          name: d.name || '',
+          dirty: false,
+        };
+      }
+    }
+
+    // 1. Reverse old transaction impact
+    if (type === 'transfer') {
+      if (oldTx.walletId && walletState[oldTx.walletId]) {
+        walletState[oldTx.walletId].balance += (oldAmt + oldFee);
+        walletState[oldTx.walletId].dirty = true;
+      }
+      if (oldTx.toWalletId && walletState[oldTx.toWalletId]) {
+        walletState[oldTx.toWalletId].balance -= oldAmt;
+        walletState[oldTx.toWalletId].dirty = true;
+      }
+    } else if (type === 'expense' || type === 'savings') {
+      if (oldTx.walletId && walletState[oldTx.walletId]) {
+        walletState[oldTx.walletId].balance += oldAmt;
+        walletState[oldTx.walletId].dirty = true;
+      }
+    } else if (type === 'income') {
+      if (oldTx.walletId && walletState[oldTx.walletId]) {
+        walletState[oldTx.walletId].balance -= oldAmt;
+        walletState[oldTx.walletId].dirty = true;
+      }
+    } else if (type === 'debt') {
+      if (oldTx.walletId && walletState[oldTx.walletId]) {
+        walletState[oldTx.walletId].balance += oldTx.isCashOut ? oldAmt : -oldAmt;
+        walletState[oldTx.walletId].dirty = true;
+      }
+    }
+
+    // 2. Apply new transaction impact
+    if (type === 'transfer') {
+      if (!walletState[newWalletId]) throw new Error('Wallet asal tidak ditemukan');
+      if (!walletState[newToWalletId]) throw new Error('Wallet tujuan tidak ditemukan');
+      walletState[newWalletId].balance -= (newAmt + newFee);
+      walletState[newWalletId].dirty = true;
+      walletState[newToWalletId].balance += newAmt;
+      walletState[newToWalletId].dirty = true;
+    } else if (type === 'expense' || type === 'savings') {
+      if (newWalletId && !walletState[newWalletId]) throw new Error('Wallet tidak ditemukan');
+      if (newWalletId) {
+        walletState[newWalletId].balance -= newAmt;
+        walletState[newWalletId].dirty = true;
+      }
+    } else if (type === 'income') {
+      if (newWalletId && !walletState[newWalletId]) throw new Error('Wallet tidak ditemukan');
+      if (newWalletId) {
+        walletState[newWalletId].balance += newAmt;
+        walletState[newWalletId].dirty = true;
+      }
+    } else if (type === 'debt') {
+      if (newWalletId && walletState[newWalletId]) {
+        walletState[newWalletId].balance += oldTx.isCashOut ? -newAmt : newAmt;
+        walletState[newWalletId].dirty = true;
+      }
+    }
+
+    // 3. Commit wallet updates
+    for (const wid of Object.keys(walletState)) {
+      if (walletState[wid].dirty) {
+        transaction.update(walletState[wid].ref, {
+          balance: walletState[wid].balance,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    // 4. Commit transaction document update
+    const nextDate = newData.date
+      ? Timestamp.fromDate(newData.date instanceof Date ? newData.date : new Date(newData.date))
+      : oldTx.date;
+
+    transaction.update(txRef, {
+      amount: newAmt,
+      adminFee: type === 'transfer' ? newFee : 0,
+      category: newData.category ?? oldTx.category,
+      walletId: newWalletId,
+      walletName: newWalletId && walletState[newWalletId] ? walletState[newWalletId].name : (oldTx.walletName || null),
+      toWalletId: type === 'transfer' ? newToWalletId : null,
+      toWalletName: type === 'transfer' && newToWalletId && walletState[newToWalletId]
+        ? walletState[newToWalletId].name
+        : (oldTx.toWalletName || null),
+      note: newData.note !== undefined ? String(newData.note).trim() : (oldTx.note || ''),
+      date: nextDate,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
+ * Atomically delete a transaction and reverse its balance impact on affected wallet(s).
+ */
+export async function deleteTransactionAtomic(txId) {
+  if (!txId) throw new Error('Transaction ID is required');
+  const txRef = doc(db, 'transactions', txId);
+
+  return runTransaction(db, async (transaction) => {
+    const txDoc = await transaction.get(txRef);
+    if (!txDoc.exists()) throw new Error('Transaksi tidak ditemukan');
+    const oldTx = txDoc.data();
+
+    const amt = Number(oldTx.amount) || 0;
+    const fee = Number(oldTx.adminFee) || 0;
+
+    const walletIds = [...new Set([oldTx.walletId, oldTx.toWalletId].filter(Boolean))];
+    const walletDocs = {};
+    for (const wid of walletIds) {
+      const wRef = doc(db, 'wallets', wid);
+      const wDoc = await transaction.get(wRef);
+      if (wDoc.exists()) {
+        walletDocs[wid] = { ref: wRef, balance: Number(wDoc.data().balance) || 0 };
+      }
+    }
+
+    if (oldTx.type === 'transfer') {
+      if (oldTx.walletId && walletDocs[oldTx.walletId]) {
+        transaction.update(walletDocs[oldTx.walletId].ref, {
+          balance: walletDocs[oldTx.walletId].balance + amt + fee,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      if (oldTx.toWalletId && walletDocs[oldTx.toWalletId]) {
+        transaction.update(walletDocs[oldTx.toWalletId].ref, {
+          balance: walletDocs[oldTx.toWalletId].balance - amt,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } else if (oldTx.type === 'expense' || oldTx.type === 'savings') {
+      if (oldTx.walletId && walletDocs[oldTx.walletId]) {
+        transaction.update(walletDocs[oldTx.walletId].ref, {
+          balance: walletDocs[oldTx.walletId].balance + amt,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } else if (oldTx.type === 'income') {
+      if (oldTx.walletId && walletDocs[oldTx.walletId]) {
+        transaction.update(walletDocs[oldTx.walletId].ref, {
+          balance: walletDocs[oldTx.walletId].balance - amt,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } else if (oldTx.type === 'debt') {
+      if (oldTx.walletId && walletDocs[oldTx.walletId]) {
+        transaction.update(walletDocs[oldTx.walletId].ref, {
+          balance: walletDocs[oldTx.walletId].balance + (oldTx.isCashOut ? amt : -amt),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    transaction.delete(txRef);
+  });
 }
 
 export async function updateTransaction(txId, data) {
