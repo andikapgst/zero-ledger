@@ -36,6 +36,8 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
   const [currency, setCurrency] = useState('IDR');
   const [balance, setBalance]   = useState('');
   const [color, setColor]       = useState('#2DD4BF');
+  const [coinSymbol, setCoinSymbol] = useState('');
+  const [coinAmount, setCoinAmount] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
@@ -48,6 +50,8 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       setCurrency(walletToEdit.currency || 'IDR');
       setBalance(walletToEdit.balance !== undefined ? String(walletToEdit.balance) : '');
       setColor(walletToEdit.color || '#2DD4BF');
+      setCoinSymbol(walletToEdit.coinSymbol || '');
+      setCoinAmount(walletToEdit.coinAmount ? String(walletToEdit.coinAmount) : '');
       setIsDefault(Boolean(walletToEdit.isDefault));
     } else {
       setName('');
@@ -55,6 +59,8 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       setCurrency('IDR');
       setBalance('');
       setColor('#2DD4BF');
+      setCoinSymbol('');
+      setCoinAmount('');
       setIsDefault(false);
     }
     setError('');
@@ -105,6 +111,9 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     setSaving(true);
     setError('');
 
+    const numCoinAmount = coinAmount ? parseFloat(coinAmount) || 0 : 0;
+    const cleanCoinSymbol = coinSymbol.trim().toUpperCase();
+
     try {
       if (isEdit) {
         await updateWallet(walletToEdit.id, {
@@ -113,6 +122,8 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           currency,
           balance: numBalance,
           color,
+          coinSymbol: cleanCoinSymbol,
+          coinAmount: numCoinAmount,
           isDefault,
         });
         toast.info(`Wallet "${name.trim()}" updated!`);
@@ -123,6 +134,8 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           currency,
           balance: numBalance,
           color,
+          coinSymbol: cleanCoinSymbol,
+          coinAmount: numCoinAmount,
           isDefault,
         });
         toast.success(`Wallet "${name.trim()}" created!`);
@@ -276,6 +289,33 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
                 onChange={handleBalanceChange}
                 placeholder={currency === 'USD' ? '0.00' : '0'}
                 className="bg-transparent text-main font-bold text-lg outline-none flex-1 placeholder:text-muted/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-muted text-xs font-medium block mb-1.5">
+              Crypto / Coin Holding <span className="text-muted/60">(Optional, not counted in IDR total)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Coin (e.g. SUI)"
+                value={coinSymbol}
+                onChange={(e) => setCoinSymbol(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="bg-bg border border-bline rounded-2xl px-3.5 py-2.5 text-main text-sm font-semibold uppercase outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:normal-case placeholder:font-normal"
+              />
+              <input
+                inputMode="decimal"
+                placeholder="Amount (e.g. 150)"
+                value={coinAmount}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9.]/g, '');
+                  const parts = raw.split('.');
+                  setCoinAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw);
+                }}
+                className="bg-bg border border-bline rounded-2xl px-3.5 py-2.5 text-main text-sm font-semibold outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:font-normal"
               />
             </div>
           </div>

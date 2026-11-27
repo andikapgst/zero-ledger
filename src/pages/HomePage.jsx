@@ -18,11 +18,12 @@ import {
   Clock,
   ChevronRight,
   AlertCircle,
+  PiggyBank,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactionModal } from '../contexts/TransactionModalContext';
 import { getWallets, getTransactions, getDebts, getBudgets, subscribeWallets } from '../lib/firebase';
-import { formatRupiah, formatDate, getYearMonth } from '../lib/utils';
+import { formatRupiah, formatDate, getYearMonth, SAVINGS_TARGET_CATEGORIES } from '../lib/utils';
 import { toIdr, getStoredUsdRate, fetchLiveUsdRate } from '../lib/currency';
 import CategoryIcon from '../components/transaction/CategoryIcon';
 import EditTransactionModal from '../components/transaction/EditTransactionModal';
@@ -102,6 +103,29 @@ export default function HomePage() {
       .filter(t => t.type === 'expense' || t.type === 'savings')
       .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   }, [currentMonthTxs]);
+
+  // Separate Savings summary (all transactions in savings type or savings categories)
+  const { totalSavings, savingsMonth } = useMemo(() => {
+    const savingCategoryNames = new Set([
+      ...SAVINGS_TARGET_CATEGORIES.map(c => c.name),
+      'Tabungan Nikah',
+      'Tabungan Dika & Diana',
+      'Simpanan Darurat',
+      'Investasi Kripto',
+    ]);
+    const isSavingsTx = (t) =>
+      t.type === 'savings' || (t.type === 'expense' && savingCategoryNames.has(t.category));
+
+    const total = transactions
+      .filter(isSavingsTx)
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+    const month = currentMonthTxs
+      .filter(isSavingsTx)
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+    return { totalSavings: total, savingsMonth: month };
+  }, [transactions, currentMonthTxs]);
 
   // ── "Needs Attention" Alerts ─────────────────────────────────
   const attentionItems = useMemo(() => {
@@ -272,6 +296,32 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── 2B. SEPARATE TOTAL SAVINGS CARD ────────────────────── */}
+      <div className="bg-surface rounded-2xl p-4 border border-teal/20 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-teal/15 flex items-center justify-center text-teal shrink-0">
+            <PiggyBank size={20} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-muted text-xs font-medium">Total Savings</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-teal/10 text-teal font-semibold">
+                {hideBalance ? '••••' : `+${formatRupiah(savingsMonth, { compact: true })} this mo`}
+              </span>
+            </div>
+            <p className="text-main font-bold text-lg truncate mt-0.5">
+              {hideBalance ? '••••••' : formatRupiah(totalSavings)}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => openModal('savings')}
+          className="px-3 py-1.5 rounded-xl bg-teal/10 hover:bg-teal/20 text-teal text-xs font-semibold shrink-0 transition-colors cursor-pointer"
+        >
+          + Save
+        </button>
+      </div>
+
       {/* ── 3. QUICK SHORTCUTS (BUDGET, HUTANG, TARGET, WALLET) ── */}
       <div>
         <h2 className="text-muted font-semibold text-xs uppercase tracking-wider mb-2.5">
@@ -333,8 +383,8 @@ export default function HomePage() {
       {attentionItems.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-white text-sm font-semibold flex items-center gap-1.5">
-              <AlertCircle size={15} className="text-amber-400" />
+            <h2 className="text-main text-sm font-semibold flex items-center gap-1.5">
+              <AlertCircle size={15} className="text-amber-500 dark:text-amber-400" />
               Needs Attention ({attentionItems.length})
             </h2>
             <span className="text-[11px] text-muted">Budget & Receivables</span>
@@ -355,8 +405,8 @@ export default function HomePage() {
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       item.isDanger
-                        ? 'bg-red-500/15 text-red-400'
-                        : 'bg-amber-500/15 text-amber-400'
+                        ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                     }`}
                   >
                     {item.type === 'budget' ? (
@@ -366,9 +416,9 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{item.title}</p>
+                    <p className="text-xs font-bold text-main truncate">{item.title}</p>
                     <p className={`text-[11px] truncate mt-0.5 ${
-                      item.isDanger ? 'text-red-300' : 'text-amber-200/90'
+                      item.isDanger ? 'text-red-600 dark:text-red-300' : 'text-amber-700 dark:text-amber-200/90'
                     }`}>
                       {item.subtitle}
                     </p>
