@@ -35,6 +35,7 @@ const BRAND_META = {
   binance:    { title: 'Binance',                        file: '/logos/binance.svg',    bg: 'bg-[#181A20]' },
   okx:        { title: 'OKX',                            file: '/logos/okx.svg',        bg: 'bg-white' },
   bybit:      { title: 'Bybit',                          file: '/logos/bybit.svg',      bg: 'bg-white' },
+  gateio:     { title: 'Gate.io',                        file: '/logos/gateio.svg',     bg: 'bg-white' },
   coinbase:   { title: 'Coinbase',                       file: '/logos/coinbase.svg',   bg: 'bg-white' },
   kucoin:     { title: 'KuCoin',                         file: '/logos/kucoin.svg',     bg: 'bg-white' },
   bitcoin:    { title: 'Bitcoin (BTC)',                  file: '/logos/bitcoin.svg',    bg: 'bg-white' },
