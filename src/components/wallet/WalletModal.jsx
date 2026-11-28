@@ -2,7 +2,7 @@
 // Modal for creating and editing a wallet (English UI)
 
 import { useState, useEffect } from 'react';
-import { X, Check, Building2, Wallet, Smartphone, TrendingUp, Trash2 } from 'lucide-react';
+import { X, Check, Building2, Wallet, Smartphone, TrendingUp, Trash2, Plus } from 'lucide-react';
 import { addWallet, updateWallet, deleteWallet } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -36,8 +36,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
   const [currency, setCurrency] = useState('IDR');
   const [balance, setBalance]   = useState('');
   const [color, setColor]       = useState('#2DD4BF');
-  const [coinSymbol, setCoinSymbol] = useState('');
-  const [coinAmount, setCoinAmount] = useState('');
+  const [holdings, setHoldings] = useState([]);
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
@@ -50,8 +49,16 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       setCurrency(walletToEdit.currency || 'IDR');
       setBalance(walletToEdit.balance !== undefined ? String(walletToEdit.balance) : '');
       setColor(walletToEdit.color || '#2DD4BF');
-      setCoinSymbol(walletToEdit.coinSymbol || '');
-      setCoinAmount(walletToEdit.coinAmount ? String(walletToEdit.coinAmount) : '');
+      if (Array.isArray(walletToEdit.holdings) && walletToEdit.holdings.length > 0) {
+        setHoldings(walletToEdit.holdings.map(h => ({
+          symbol: h.symbol || '',
+          amount: h.amount !== undefined ? String(h.amount) : '',
+        })));
+      } else if (walletToEdit.coinSymbol && Number(walletToEdit.coinAmount) > 0) {
+        setHoldings([{ symbol: walletToEdit.coinSymbol, amount: String(walletToEdit.coinAmount) }]);
+      } else {
+        setHoldings([]);
+      }
       setIsDefault(Boolean(walletToEdit.isDefault));
     } else {
       setName('');
@@ -59,8 +66,7 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
       setCurrency('IDR');
       setBalance('');
       setColor('#2DD4BF');
-      setCoinSymbol('');
-      setCoinAmount('');
+      setHoldings([]);
       setIsDefault(false);
     }
     setError('');
@@ -111,8 +117,12 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
     setSaving(true);
     setError('');
 
-    const numCoinAmount = coinAmount ? parseFloat(coinAmount) || 0 : 0;
-    const cleanCoinSymbol = coinSymbol.trim().toUpperCase();
+    const cleanHoldings = holdings
+      .map(h => ({
+        symbol: h.symbol.trim().toUpperCase(),
+        amount: parseFloat(h.amount) || 0,
+      }))
+      .filter(h => h.symbol && h.amount > 0);
 
     try {
       if (isEdit) {
@@ -122,8 +132,9 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           currency,
           balance: numBalance,
           color,
-          coinSymbol: cleanCoinSymbol,
-          coinAmount: numCoinAmount,
+          holdings: cleanHoldings,
+          coinSymbol: cleanHoldings[0]?.symbol || '',
+          coinAmount: cleanHoldings[0]?.amount || 0,
           isDefault,
         });
         toast.info(`Wallet "${name.trim()}" updated!`);
@@ -134,8 +145,9 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           currency,
           balance: numBalance,
           color,
-          coinSymbol: cleanCoinSymbol,
-          coinAmount: numCoinAmount,
+          holdings: cleanHoldings,
+          coinSymbol: cleanHoldings[0]?.symbol || '',
+          coinAmount: cleanHoldings[0]?.amount || 0,
           isDefault,
         });
         toast.success(`Wallet "${name.trim()}" created!`);
@@ -294,30 +306,58 @@ export default function WalletModal({ isOpen, onClose, walletToEdit, userId, onS
           </div>
 
           <div>
-            <label className="text-muted text-xs font-medium block mb-1.5">
-              Crypto / Coin Holding <span className="text-muted/60">(Optional, not counted in IDR total)</span>
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Coin (e.g. SUI)"
-                value={coinSymbol}
-                onChange={(e) => setCoinSymbol(e.target.value.toUpperCase())}
-                maxLength={10}
-                className="bg-bg border border-bline rounded-2xl px-3.5 py-2.5 text-main text-sm font-semibold uppercase outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:normal-case placeholder:font-normal"
-              />
-              <input
-                inputMode="decimal"
-                placeholder="Amount (e.g. 150)"
-                value={coinAmount}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^0-9.]/g, '');
-                  const parts = raw.split('.');
-                  setCoinAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw);
-                }}
-                className="bg-bg border border-bline rounded-2xl px-3.5 py-2.5 text-main text-sm font-semibold outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:font-normal"
-              />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-muted text-xs font-medium">
+                Crypto / Token Holdings <span className="text-muted/60">(Optional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setHoldings(prev => [...prev, { symbol: '', amount: '' }])}
+                className="text-teal text-xs font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                <Plus size={13} /> Add Token
+              </button>
             </div>
+
+            {holdings.length > 0 && (
+              <div className="space-y-2">
+                {holdings.map((h, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Token (e.g. SUI, USDT)"
+                      value={h.symbol}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setHoldings(prev => prev.map((item, i) => i === idx ? { ...item, symbol: val } : item));
+                      }}
+                      maxLength={10}
+                      className="w-28 bg-bg border border-bline rounded-2xl px-3 py-2 text-main text-xs font-semibold uppercase outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:normal-case placeholder:font-normal"
+                    />
+                    <input
+                      inputMode="decimal"
+                      placeholder="Amount (e.g. 150)"
+                      value={h.amount}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9.]/g, '');
+                        const parts = raw.split('.');
+                        const cleaned = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw;
+                        setHoldings(prev => prev.map((item, i) => i === idx ? { ...item, amount: cleaned } : item));
+                      }}
+                      className="flex-1 bg-bg border border-bline rounded-2xl px-3 py-2 text-main text-xs font-semibold outline-none focus:border-teal/50 placeholder:text-muted/40 placeholder:font-normal"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setHoldings(prev => prev.filter((_, i) => i !== idx))}
+                      className="w-8 h-8 rounded-xl bg-subcard text-muted hover:text-red-400 flex items-center justify-center shrink-0 cursor-pointer"
+                      aria-label="Remove token"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

@@ -30,7 +30,7 @@ import EditTransactionModal from '../components/transaction/EditTransactionModal
 import ThemeToggle from '../components/layout/ThemeToggle';
 
 export default function HomePage() {
-  const { user, displayName } = useAuth();
+  const { user, displayName, photoURL } = useAuth();
   const { openModal, refreshTrigger } = useTransactionModal();
   const navigate = useNavigate();
 
@@ -203,9 +203,9 @@ export default function HomePage() {
           className="flex items-center gap-3 text-left group cursor-pointer"
           title="View Profile & Settings"
         >
-          {user?.photoURL ? (
+          {(photoURL || user?.photoURL) ? (
             <img
-              src={user.photoURL}
+              src={photoURL || user.photoURL}
               alt={fullName}
               referrerPolicy="no-referrer"
               className="w-10 h-10 rounded-full object-cover border-2 border-teal/40 group-hover:border-teal transition-colors shrink-0"

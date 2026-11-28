@@ -10,6 +10,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser]               = useState(undefined); // undefined = loading
   const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL]       = useState('');
   const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,8 @@ export function AuthProvider({ children }) {
             if (firebaseUser) {
               setUser(firebaseUser);
               setDisplayName(firebaseUser.displayName || '');
+              const customPhoto = localStorage.getItem(`zl_custom_photo_${firebaseUser.uid}`);
+              setPhotoURL(customPhoto || firebaseUser.photoURL || '');
               setLoading(false);
 
               try {
@@ -38,6 +41,7 @@ export function AuthProvider({ children }) {
             } else {
               setUser(null);
               setDisplayName('');
+              setPhotoURL('');
               setLoading(false);
             }
           },
@@ -72,8 +76,19 @@ export function AuthProvider({ children }) {
     return saved;
   }, []);
 
+  const updatePhotoURL = useCallback((newPhotoUrl) => {
+    if (!user?.uid) return;
+    if (newPhotoUrl) {
+      localStorage.setItem(`zl_custom_photo_${user.uid}`, newPhotoUrl);
+      setPhotoURL(newPhotoUrl);
+    } else {
+      localStorage.removeItem(`zl_custom_photo_${user.uid}`);
+      setPhotoURL(user.photoURL || '');
+    }
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, displayName, loading, login, logout, updateDisplayName }}>
+    <AuthContext.Provider value={{ user, displayName, photoURL, loading, login, logout, updateDisplayName, updatePhotoURL }}>
       {children}
     </AuthContext.Provider>
   );

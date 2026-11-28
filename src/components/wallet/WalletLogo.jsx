@@ -35,6 +35,7 @@ const BRAND_META = {
   binance:    { title: 'Binance',                        file: '/logos/binance.svg',    bg: 'bg-[#181A20]' },
   okx:        { title: 'OKX',                            file: '/logos/okx.svg',        bg: 'bg-white' },
   bybit:      { title: 'Bybit',                          file: '/logos/bybit.svg',      bg: 'bg-white' },
+  bitget:     { title: 'Bitget',                         file: '/logos/bitget.svg',     bg: 'bg-white' },
   gateio:     { title: 'Gate.io',                        file: '/logos/gateio.svg',     bg: 'bg-white' },
   coinbase:   { title: 'Coinbase',                       file: '/logos/coinbase.svg',   bg: 'bg-white' },
   kucoin:     { title: 'KuCoin',                         file: '/logos/kucoin.svg',     bg: 'bg-white' },
@@ -55,6 +56,8 @@ export function getWalletBrand(name = '', type = '') {
   if (n.includes('binance')) return 'binance';
   if (/\bokx\b/.test(n) || n.includes('okex')) return 'okx';
   if (n.includes('bybit')) return 'bybit';
+  if (n.includes('bitget')) return 'bitget';
+  if (n.includes('gate.io') || n.includes('gate')) return 'gateio';
   if (n.includes('coinbase')) return 'coinbase';
   if (n.includes('kucoin')) return 'kucoin';
   if (n.includes('bitcoin') || /\bbtc\b/.test(n)) return 'bitcoin';

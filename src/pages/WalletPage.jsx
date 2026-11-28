@@ -404,11 +404,19 @@ export default function WalletPage() {
                               USD
                             </span>
                           )}
-                          {Number(w.coinAmount) > 0 && w.coinSymbol && (
-                            <span className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300 text-[10px] font-bold">
-                              {hideAmount ? `••• ${w.coinSymbol}` : `${w.coinAmount} ${w.coinSymbol}`}
+                          {(Array.isArray(w.holdings) && w.holdings.length > 0
+                            ? w.holdings
+                            : Number(w.coinAmount) > 0 && w.coinSymbol
+                            ? [{ symbol: w.coinSymbol, amount: w.coinAmount }]
+                            : []
+                          ).map((h, idx) => (
+                            <span
+                              key={`${h.symbol}-${idx}`}
+                              className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-300 text-[10px] font-bold"
+                            >
+                              {hideAmount ? `••• ${h.symbol}` : `${h.amount} ${h.symbol}`}
                             </span>
-                          )}
+                          ))}
                         </p>
                       </div>
                     </div>

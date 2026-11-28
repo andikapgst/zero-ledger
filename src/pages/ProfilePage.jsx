@@ -1,7 +1,7 @@
 // src/pages/ProfilePage.jsx
 // User Profile & App Preferences: Edit Display Name, PIN App Lock, Multi-Currency Rate, Privacy, CSV Export, Sign Out
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
   Lock,
   RefreshCw,
   DollarSign,
+  Camera,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -31,10 +32,11 @@ import ThemeToggle from '../components/layout/ThemeToggle';
 const HIDE_BALANCE_KEY = 'zl_hide_balance_default';
 
 export default function ProfilePage() {
-  const { user, displayName, updateDisplayName, logout } = useAuth();
+  const { user, displayName, photoURL, updateDisplayName, updatePhotoURL, logout } = useAuth();
   const { pinEnabled, enablePin, disablePin, lockNow } = usePinLock();
   const toast = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const currentName = displayName || user?.displayName || 'User';
 
@@ -98,6 +100,37 @@ export default function ProfilePage() {
     } finally {
       setSavingName(false);
     }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 160;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+        const compressed = canvas.toDataURL('image/jpeg', 0.78);
+        updatePhotoURL(compressed);
+        toast.success('Display photo updated!');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleToggleHideDefault = () => {
@@ -250,18 +283,36 @@ export default function ProfilePage() {
       {/* Profile Identity Card */}
       <div className="bg-surface border border-bline rounded-3xl p-5 space-y-4 shadow-sm">
         <div className="flex items-center gap-4">
-          {user?.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={currentName}
-              referrerPolicy="no-referrer"
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-teal/40 shrink-0"
+          <div className="relative shrink-0">
+            {(photoURL || user?.photoURL) ? (
+              <img
+                src={photoURL || user.photoURL}
+                alt={currentName}
+                referrerPolicy="no-referrer"
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-teal/40"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-teal/15 border-2 border-teal/40 flex items-center justify-center text-teal font-extrabold text-xl">
+                {initials}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl bg-teal text-[#0B1215] flex items-center justify-center shadow-md hover:scale-105 transition-transform cursor-pointer"
+              title="Change Display Photo"
+              aria-label="Change Display Photo"
+            >
+              <Camera size={13} className="stroke-[2.5]" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
             />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-teal/15 border-2 border-teal/40 flex items-center justify-center text-teal font-extrabold text-xl shrink-0">
-              {initials}
-            </div>
-          )}
+          </div>
 
           <div className="flex-1 min-w-0">
             {editing ? (
